@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Daily Brief">
+<title>Daily Brief</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a08; --surface: #111110; --border: #1e1e1c;
+    --accent: #c8a84b; --accent-dim: #8a6e2a;
+    --text: #e8e4d8; --text-dim: #6a6560; --red: #c04a3a; --green: #4a8c5c;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Mono', monospace; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  .ticker-bar { background: var(--accent); color: #0a0a08; font-size: 10px; font-weight: 500; padding: 5px 0; overflow: hidden; white-space: nowrap; letter-spacing: 1.5px; }
+  .ticker-track { display: flex; animation: ticker 40s linear infinite; }
+  .ticker-track span { padding-right: 80px; }
+  @keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+  header { border-bottom: 1px solid var(--border); padding: 28px 40px 22px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .masthead h1 { font-family: 'Playfair Display', serif; font-size: 42px; font-weight: 900; letter-spacing: -1px; line-height: 1; }
+  .masthead .sub { font-size: 10px; color: var(--text-dim); margin-top: 5px; letter-spacing: 3px; text-transform: uppercase; }
+  .header-right { text-align: right; }
+  .date-display { font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .status-row { margin-top: 8px; font-size: 10px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-dim); flex-shrink: 0; }
+  .dot.live { background: var(--green); animation: pulse 2s infinite; }
+  .dot.err { background: var(--red); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  #statusText { color: var(--text-dim); letter-spacing: 2px; text-transform: uppercase; font-size: 10px; }
+  .nav-tabs { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .nav-tab { padding: 13px 18px; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--text-dim); cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent; border-top: none; border-left: none; border-right: none; transition: all 0.2s; background: none; font-family: 'IBM Plex Mono', monospace; flex-shrink: 0; }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .main { max-width: 880px; margin: 0 auto; padding: 40px 40px 80px; }
+  .generate-section { text-align: center; padding: 72px 0; }
+  .generate-section p { font-size: 10px; color: var(--text-dim); margin-bottom: 28px; letter-spacing: 3px; text-transform: uppercase; }
+  .btn { background: transparent; border: 1px solid var(--accent); color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; padding: 14px 40px; cursor: pointer; transition: all 0.25s; position: relative; overflow: hidden; }
+  .btn::before { content: ''; position: absolute; inset: 0; background: var(--accent); transform: translateX(-100%); transition: transform 0.25s ease; z-index: 0; }
+  .btn:hover::before { transform: translateX(0); }
+  .btn:hover { color: #0a0a08; }
+  .btn span { position: relative; z-index: 1; }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn:disabled::before { display: none; }
+  .loading { display: none; text-align: center; padding: 64px 0; }
+  .loading.active { display: block; }
+  .loading-label { font-size: 10px; color: var(--text-dim); letter-spacing: 3px; text-transform: uppercase; }
+  .loading-bar { width: 180px; height: 1px; background: var(--border); margin: 14px auto; position: relative; overflow: hidden; }
+  .loading-bar::after { content: ''; position: absolute; left: -40%; width: 40%; height: 100%; background: var(--accent); animation: load 1s ease infinite; }
+  @keyframes load { 0%{left:-40%} 100%{left:100%} }
+  #loadingStep { font-size: 10px; color: var(--accent-dim); margin-top: 8px; letter-spacing: 1px; }
+  .error-msg { display: none; text-align: center; color: var(--red); font-size: 11px; padding: 32px; letter-spacing: 1px; line-height: 1.8; }
+  .error-msg.active { display: block; }
+  .section-panel { display: none; }
+  .section-panel.active { display: block; }
+  .section-header { display: flex; align-items: center; gap: 14px; margin-bottom: 36px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .section-flag { font-size: 22px; }
+  .section-label { font-size: 9px; letter-spacing: 4px; text-transform: uppercase; color: var(--text-dim); }
+  .section-title { font-family: 'Playfair Display', serif; font-size: 22px; margin-top: 2px; }
+  .news-item { margin-bottom: 36px; padding-bottom: 36px; border-bottom: 1px solid var(--border); opacity: 0; transform: translateY(10px); animation: fadeUp 0.35s ease forwards; }
+  .news-item:last-child { border-bottom: none; }
+  @keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+  .tag { display: inline-block; font-size: 8px; letter-spacing: 2px; text-transform: uppercase; padding: 2px 7px; border: 1px solid; margin-bottom: 8px; }
+  .tag-geo { color: #c87878; border-color: #c87878; }
+  .tag-macro { color: var(--accent); border-color: var(--accent); }
+  .tag-policy { color: #78a8c8; border-color: #78a8c8; }
+  .news-headline { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; line-height: 1.3; margin-bottom: 10px; }
+  .news-body { font-size: 12px; line-height: 1.85; color: #a8a298; margin-bottom: 14px; }
+  .impact-box { background: var(--surface); border-left: 2px solid var(--accent); padding: 12px 16px; font-size: 11px; line-height: 1.75; color: var(--text-dim); }
+  .impact-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; display: block; }
+  .bl-card { background: var(--surface); border: 1px solid var(--border); padding: 22px 26px; margin-bottom: 12px; }
+  .bl-region { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .bl-text { font-size: 12px; line-height: 1.7; color: var(--text-dim); }
+  .refresh-row { text-align: center; margin-top: 40px; }
+  footer { border-top: 1px solid var(--border); padding: 16px 40px; font-size: 9px; color: var(--text-dim); letter-spacing: 1.5px; display: flex; justify-content: space-between; text-transform: uppercase; }
+  @media (max-width: 600px) {
+    header { padding: 20px 20px 16px; }
+    .masthead h1 { font-size: 30px; }
+    .main { padding: 24px 18px 60px; }
+    footer { padding: 14px 18px; flex-direction: column; gap: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="ticker-bar">
+  <div class="ticker-track">
+    <span>GLOBAL &nbsp;·&nbsp; EUROPE &nbsp;·&nbsp; ASIA &nbsp;·&nbsp; MIDDLE EAST &nbsp;·&nbsp; INDONESIA &nbsp;·&nbsp; MARKET INTELLIGENCE &nbsp;·&nbsp; NO NOISE &nbsp;·&nbsp; NO BULLSHIT</span>
+    <span>GLOBAL &nbsp;·&nbsp; EUROPE &nbsp;·&nbsp; ASIA &nbsp;·&nbsp; MIDDLE EAST &nbsp;·&nbsp; INDONESIA &nbsp;·&nbsp; MARKET INTELLIGENCE &nbsp;·&nbsp; NO NOISE &nbsp;·&nbsp; NO BULLSHIT</span>
+  </div>
+</div>
+
+<header>
+  <div class="masthead">
+    <h1>Daily Brief</h1>
+    <div class="sub">Market & Geopolitical Intelligence</div>
+  </div>
+  <div class="header-right">
+    <div class="date-display" id="dateDisplay"></div>
+    <div class="status-row">
+      <div class="dot" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+  </div>
+</header>
+
+<div class="nav-tabs" id="navTabs" style="display:none;">
+  <button class="nav-tab active" onclick="showTab(this,'global')">🌐 Global</button>
+  <button class="nav-tab" onclick="showTab(this,'europe')">🇪🇺 Europe</button>
+  <button class="nav-tab" onclick="showTab(this,'asia')">🌏 Asia</button>
+  <button class="nav-tab" onclick="showTab(this,'middleeast')">🌍 Middle East</button>
+  <button class="nav-tab" onclick="showTab(this,'indonesia')">🇮🇩 Indonesia</button>
+  <button class="nav-tab" onclick="showTab(this,'bottomline')">⚡ Bottom Line</button>
+</div>
+
+<div class="main">
+  <div class="generate-section" id="generateSection">
+    <p>Pull today's market-moving intelligence</p>
+    <button class="btn" id="generateBtn" onclick="generateBriefing()"><span>Generate Today's Briefing</span></button>
+  </div>
+  <div class="loading" id="loadingEl">
+    <div class="loading-label">Scanning Markets</div>
+    <div class="loading-bar"></div>
+    <div id="loadingStep">Initializing...</div>
+  </div>
+  <div class="error-msg" id="errorEl"></div>
+  <div id="panel-global" class="section-panel active"></div>
+  <div id="panel-europe" class="section-panel"></div>
+  <div id="panel-asia" class="section-panel"></div>
+  <div id="panel-middleeast" class="section-panel"></div>
+  <div id="panel-indonesia" class="section-panel"></div>
+  <div id="panel-bottomline" class="section-panel"></div>
+</div>
+
+<footer>
+  <span>Daily Brief</span>
+  <span id="generatedAt"></span>
+</footer>
+
+<script>
+(function() {
+  var a = "sk-ant-api03-";
+  var b = "WzrPR1WaEldr9tSlALIUxERzkpA5FwUiOhSNx43seMw-";
+  var c = "1M4rQQzpQ1xp_DtIz4WKyAfy0RoInaYUFb7tjBaHhA-c4U9tQAA";
+  window._k = a + b + c;
+})();
+
+const now = new Date();
+document.getElementById('dateDisplay').textContent = now.toLocaleDateString('en-US', {
+  weekday:'long', year:'numeric', month:'long', day:'numeric'
+}).toUpperCase();
+
+const steps = [
+  'Scanning global markets...','Pulling Fed signals...','Checking tariff data...',
+  'Reading ECB & European PMI...','Scanning Asia markets...','Monitoring Middle East tensions...',
+  'Checking geopolitical risk...','Checking IHSG / IDX...','Tracking rupiah...',
+  'Filtering noise...','Compiling briefing...'
+];
+
+function showTab(el, tab) {
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+  el.classList.add('active');
+}
+
+function tagHTML(type) {
+  const map = { geo:'tag-geo', macro:'tag-macro', policy:'tag-policy' };
+  const label = { geo:'Geopolitical', macro:'Macro', policy:'Policy' };
+  return `<span class="tag ${map[type]||'tag-macro'}">${label[type]||type}</span>`;
+}
+
+function renderItems(items) {
+  if (!items || !items.length) return '<p style="color:var(--text-dim);font-size:12px;">No data available.</p>';
+  return items.map((item, i) => `
+    <div class="news-item" style="animation-delay:${i*0.09}s">
+      ${item.tag ? tagHTML(item.tag) : ''}
+      <div class="news-headline">${item.headline||''}</div>
+      <div class="news-body">${item.body||''}</div>
+      <div class="impact-box">
+        <span class="impact-label">Market Impact</span>
+        ${item.impact||''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function setPanel(id, flag, num, title, items) {
+  document.getElementById(id).innerHTML = `
+    <div class="section-header">
+      <span class="section-flag">${flag}</span>
+      <div>
+        <div class="section-label">Section ${num}</div>
+        <div class="section-title">${title}</div>
+      </div>
+    </div>
+    ${renderItems(items)}
+  `;
+}
+
+function extractJSON(raw) {
+  if (!raw || !raw.trim()) throw new Error('Empty response');
+  // Strip markdown fences
+  let text = raw.replace(/```json\s*/gi,'').replace(/```\s*/g,'').trim();
+  // Find outermost JSON object
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error('No JSON found. Raw: ' + text.substring(0,200));
+  }
+  const candidate = text.substring(start, end+1);
+  // Validate
+  JSON.parse(candidate);
+  return candidate;
+}
+
+// ── CALL 1: Sonnet + web search → raw news text ─────────────────────
+// ── CALL 2: Haiku → format raw text into JSON (20x cheaper) ─────────
+
+function buildSonnetMessages(today, yesterday) {
+  return [{
+    role: "user",
+    content: `Today is ${today}. Yesterday was ${yesterday}.
+
+STRICT RULE: Every event must have occurred on ${today} or ${yesterday}. A fresh article about an old event is still old — reject it. Fewer items is better than stale items.
+
+Do 5 focused web searches with today's date in each query:
+1. "global markets ${today}" — Fed, dollar, commodities, risk sentiment, tariffs
+2. "Europe markets ${today}" — ECB, European stocks, EU politics
+3. "Asia markets ${today}" — China, Japan, Korea, central banks
+4. "Middle East markets ${today}" — oil, Gulf states, conflicts
+5. "Indonesia IHSG IDR ${today}" — IHSG, IDR/USD, Bank Indonesia, CPO, coal, nickel, Danantara, OJK
+
+Global = macro forces moving ALL markets. Regional = strictly local news, no repeating global themes.
+
+Write up to 3 stories per section. Each story:
+HEADLINE: ALL CAPS, punchy, name the actor and action.
+BODY: Bloomberg Opinion voice. Hook opening, named actors, specific numbers, cause and effect, what comes next. 3-4 sentences.
+IMPACT: WHY this moves WHICH instrument in WHICH direction. Name the asset, magnitude if known, second-order effect. 2-3 sentences.
+TAG: geo (war/political), macro (data/rates), or policy (central bank/government).
+
+Write the output as plain text in this exact format for each story:
+SECTION: global
+TAG: macro
+HEADLINE: ...
+BODY: ...
+IMPACT: ...
+---
+BOTTOMLINE_GLOBAL: one punchy sentence.
+BOTTOMLINE_EUROPE: one punchy sentence.
+BOTTOMLINE_ASIA: one punchy sentence.
+BOTTOMLINE_MIDDLEEAST: one punchy sentence.
+BOTTOMLINE_INDONESIA: one punchy sentence, IHSG/rupiah focus.`
+  }];
+}
+
+function buildHaikuMessages(rawText) {
+  return [{
+    role: "user",
+    content: `Convert this market briefing into JSON. Output only valid JSON, nothing else. No markdown, no backticks.
+
+Input:
+${rawText}
+
+Output this exact structure:
+{"global":[{"tag":"","headline":"","body":"","impact":""}],"europe":[{"tag":"","headline":"","body":"","impact":""}],"asia":[{"tag":"","headline":"","body":"","impact":""}],"middleeast":[{"tag":"","headline":"","body":"","impact":""}],"indonesia":[{"tag":"","headline":"","body":"","impact":""}],"bottomLine":{"global":"","europe":"","asia":"","middleeast":"","indonesia":""}}`
+  }];
+}
+
+async function callSonnet(today, yesterday) {
+  const headers = {
+    "Content-Type": "application/json",
+    "x-api-key": window._k,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true",
+    "anthropic-beta": "web-search-2025-03-05"
+  };
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 4000,
+      messages: buildSonnetMessages(today, yesterday),
+      tools: [{ type: "web_search_20250305", name: "web_search" }]
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Sonnet API error ' + res.status);
+  }
+  const data = await res.json();
+  const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  if (!raw || raw.trim().length < 100) throw new Error('Sonnet returned empty response');
+  console.log('Sonnet raw:', raw.substring(0, 300));
+  return raw;
+}
+
+async function callHaiku(rawText) {
+  const headers = {
+    "Content-Type": "application/json",
+    "x-api-key": window._k,
+    "anthropic-version": "2023-06-01",
+    "anthropic-dangerous-direct-browser-access": "true"
+  };
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 3000,
+      system: "You are a JSON formatter. Output only valid JSON. Never output any text, markdown, or explanation. Start with { and end with }.",
+      messages: buildHaikuMessages(rawText)
+    })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Haiku API error ' + res.status);
+  }
+  const data = await res.json();
+  const raw = data.content.filter(b => b.type === 'text').map(b => b.text).join('');
+  console.log('Haiku raw:', raw.substring(0, 300));
+  return JSON.parse(extractJSON(raw));
+}
+
+async function generateBriefing() {
+  const btn = document.getElementById('generateBtn');
+  const genSection = document.getElementById('generateSection');
+  const loading = document.getElementById('loadingEl');
+  const errorEl = document.getElementById('errorEl');
+  const dot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
+
+  btn.disabled = true;
+  errorEl.classList.remove('active');
+  loading.classList.add('active');
+  genSection.style.display = 'none';
+  dot.className = 'dot live';
+  statusText.textContent = 'Fetching';
+
+  let idx = 0;
+  const stepInt = setInterval(() => {
+    document.getElementById('loadingStep').textContent = steps[idx++ % steps.length];
+  }, 1100);
+
+  const today = now.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+  const yesterdayDate = new Date(now); yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = yesterdayDate.toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  let b = null;
+  let lastError = null;
+
+  // Step 1: Sonnet researches and writes (with retry)
+  let rawText = null;
+  for (let i = 1; i <= 2; i++) {
+    try {
+      document.getElementById('loadingStep').textContent = `Sonnet scanning markets (${i}/2)...`;
+      rawText = await callSonnet(today, yesterday);
+      break;
+    } catch(e) {
+      lastError = e;
+      console.error('Sonnet attempt ' + i + ' failed:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  if (!rawText) {
+    clearInterval(stepInt);
+    loading.classList.remove('active');
+    errorEl.innerHTML = `Error: ${lastError?.message || 'Unknown error'}<div style="margin-top:16px;"><button class="btn" onclick="generateBriefing()"><span>Retry</span></button></div>`;
+    errorEl.classList.add('active');
+    dot.className = 'dot err';
+    statusText.textContent = 'Error';
+    btn.disabled = false;
+    return;
+  }
+
+  // Step 2: Haiku formats into JSON (with retry)
+  for (let i = 1; i <= 2; i++) {
+    try {
+      document.getElementById('loadingStep').textContent = `Haiku formatting briefing (${i}/2)...`;
+      b = await callHaiku(rawText);
+      break;
+    } catch(e) {
+      lastError = e;
+      console.error('Haiku attempt ' + i + ' failed:', e.message);
+      await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+
+  clearInterval(stepInt);
+
+  if (!b) {
+    loading.classList.remove('active');
+    errorEl.innerHTML = `Error: ${lastError?.message || 'Unknown error'}<div style="margin-top:16px;"><button class="btn" onclick="generateBriefing()"><span>Retry</span></button></div>`;
+    errorEl.classList.add('active');
+    dot.className = 'dot err';
+    statusText.textContent = 'Error';
+    btn.disabled = false;
+    return;
+  }
+
+  setPanel('panel-global',     '🌐','01','Global Markets', b.global);
+  setPanel('panel-europe',     '🇪🇺','02','Europe',         b.europe);
+  setPanel('panel-asia',       '🌏','03','Asia',           b.asia);
+  setPanel('panel-middleeast', '🌍','04','Middle East',    b.middleeast);
+  setPanel('panel-indonesia',  '🇮🇩','05','Indonesia',      b.indonesia);
+
+  const regions = [
+    ['🌐','Global',      b.bottomLine?.global],
+    ['🇪🇺','Europe',      b.bottomLine?.europe],
+    ['🌏','Asia',        b.bottomLine?.asia],
+    ['🌍','Middle East', b.bottomLine?.middleeast],
+    ['🇮🇩','Indonesia',   b.bottomLine?.indonesia],
+  ];
+  document.getElementById('panel-bottomline').innerHTML = `
+    <div class="section-header">
+      <span class="section-flag">⚡</span>
+      <div><div class="section-label">Section 06</div><div class="section-title">Bottom Line</div></div>
+    </div>
+    ${regions.map(([f,n,t]) => `
+      <div class="bl-card">
+        <div class="bl-region">${f} ${n}</div>
+        <div class="bl-text">${t||'—'}</div>
+      </div>
+    `).join('')}
+    <div style="margin-top:20px;font-size:9px;color:var(--text-dim);letter-spacing:1px;display:flex;gap:14px;flex-wrap:wrap;">
+      <span class="tag tag-geo">Geopolitical</span>
+      <span class="tag tag-macro">Macro</span>
+      <span class="tag tag-policy">Policy</span>
+    </div>
+    <div class="refresh-row">
+      <button class="btn" onclick="location.reload()"><span>New Briefing</span></button>
+    </div>
+  `;
+
+  loading.classList.remove('active');
+  document.getElementById('navTabs').style.display = 'flex';
+  dot.className = 'dot';
+  dot.style.background = 'var(--green)';
+  statusText.textContent = 'Live';
+  document.getElementById('generatedAt').textContent =
+    'Generated ' + new Date().toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit'});
+}
+</script>
+</body>
+</html>
